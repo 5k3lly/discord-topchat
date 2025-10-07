@@ -1,0 +1,10 @@
+FROM python:3.12-slim
+
+WORKDIR /
+RUN pip install --no-cache-dir fastapi uvicorn
+
+COPY static/ ./static/
+COPY fastapi_app.py ./fastapi_app.py
+
+# Run the FastAPI server
+CMD ["uvicorn", "fastapi_app:app", "--host", "0.0.0.0", "--port", "8003"]

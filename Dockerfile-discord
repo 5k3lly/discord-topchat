@@ -1,0 +1,14 @@
+FROM python:3.12-slim
+
+WORKDIR /
+
+COPY discord_client.py ./discord_client.py
+COPY .env ./.env
+
+RUN apt-get update && apt-get install -y git && \
+    pip install --no-cache-dir dotenv \
+    git+https://github.com/dolfies/discord.py-self@renamed#egg=selfcord.py && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+CMD ["python", "discord_client.py"]

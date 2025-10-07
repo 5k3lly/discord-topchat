@@ -1,0 +1,10 @@
+
+CREATE TABLE IF NOT EXISTS message (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user VARCHAR(128),
+    msg TEXT,
+    channel VARCHAR(128),
+    msg_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS IX_user ON message(user, channel);

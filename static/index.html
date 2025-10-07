@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Frequency Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .dropdown-menu { max-height: 300px; overflow-y: auto; }
+        #channelDropdownMenu { width: 200px; }
+        canvas { max-width: 800px; margin: 20px auto; height: 600px !important; } /* Increased height */
+        body { background-color: #f8f9fa; font-family: 'Arial', sans-serif; }
+        h1 { color: #343a40; text-align: center; }
+        .container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .btn-primary, .btn-secondary { transition: all 0.3s ease; }
+        .btn-primary:hover, .btn-secondary:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="mb-3">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Select Channels
+            </button>
+            <ul class="dropdown-menu" id="channelDropdownMenu">
+                <!-- Populated dynamically -->
+            </ul>
+        </div>
+        <canvas id="frequencyChart"></canvas>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script>
+        let chart = null;
+
+        // Fetch and populate channels
+        async function loadChannels() {
+            const response = await fetch('/api/channels');
+            const data = await response.json();
+            if (data.error) {
+                alert('Error loading channels: ' + data.error);
+                return;
+            }
+            const dropdown = document.getElementById('channelDropdownMenu');
+            dropdown.innerHTML = '';
+            data.channels.forEach(channel => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <label class="dropdown-item">
+                        <input type="checkbox" value="${channel}" checked> ${channel}
+                    </label>`;
+                dropdown.appendChild(li);
+            });
+            updateChart();
+        }
+
+        // Fetch and update chart
+        async function updateChart() {
+            const checkboxes = document.querySelectorAll('#channelDropdownMenu input[type="checkbox"]:checked');
+            const selectedChannels = Array.from(checkboxes).map(cb => cb.value);
+            const params = selectedChannels.length ? `?channels=${selectedChannels.join(',')}` : '';
+            const response = await fetch(`/api/users/frequency${params}`);
+            const data = await response.json();
+            if (data.error) {
+                alert('Error loading frequencies: ' + data.error);
+                return;
+            }
+
+            // Sort by count (descending) for highest frequency at top
+            const sortedFrequencies = data.frequencies.sort((a, b) => b.count - a.count);
+            const labels = sortedFrequencies.map(item => item.user);
+            const counts = sortedFrequencies.map(item => item.count);
+
+            // Create gradient for bars
+            const ctx = document.getElementById('frequencyChart').getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(75, 192, 192, 0.8)');
+            gradient.addColorStop(1, 'rgba(54, 162, 235, 0.8)');
+
+            if (chart) chart.destroy();
+            chart = new Chart(document.getElementById('frequencyChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Top Chatters',
+                        data: counts,
+                        backgroundColor: gradient,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                        barThickness: 15 // Reduced for more labels
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Horizontal bars (User on Y-axis)
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 10 }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(200, 200, 200, 0.2)' }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                autoSkip: false, // Show all user names
+                                font: { size: 12 }, // Smaller font for readability
+                                maxRotation: 0, // Prevent rotation
+                                minRotation: 0,
+                                stepSize: 1,
+                                precision: 0
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    },
+                    layout: {
+                        padding: { top: 10, bottom: 10 } // Extra padding for labels
+                    }
+                }
+            });
+        }
+
+        // Load channels on page load
+        window.onload = loadChannels;
+
+        // Update chart when checkboxes change
+        document.getElementById('channelDropdownMenu').addEventListener('change', updateChart);
+    </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+services:
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - data:/db
+    command: ["sh", "-c", "sqlite3 /db/mydb.db < /init-db.sql"]
+
+  discord:
+    build:
+      context: .
+      dockerfile: Dockerfile-discord
+    volumes:
+      - data:/db
+      - log-data:/log
+    depends_on:
+      - db
+    command: ["sh", "-c", "python -u discord_client.py 2>&1 | tee /log/discord.log"]
+    # command: ["sh", "-c", "python discord_client.py"] # to turn off logging.
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile-api
+    volumes:
+      - data:/db
+      - log-data:/log
+    ports:
+      - 8003:8000
+    environment:
+      - UVICORN_RELOAD=false
+    depends_on:
+      - db
+    command: ["sh", "-c", "uvicorn fastapi_app:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips '*' 2>&1 | tee /log/fastapi.log"]
+
+volumes:
+  data:
+  log-data:
