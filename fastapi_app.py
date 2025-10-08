@@ -7,7 +7,6 @@ import sqlite3
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 DB_PATH = "/db/mydb.db"
 
@@ -19,10 +18,11 @@ def connect_db():
         print(f"Error connecting to database: {e}", file=sys.stderr)
         return None
 
-
+"""
 @app.get("/")
 async def root():
     return RedirectResponse(url="/static/index.html")
+"""
 
 @app.get("/test")
 async def get_count():
@@ -79,3 +79,5 @@ async def get_channels():
         return {"error": str(e)}
     finally:
         conn.close()
+
+app.mount("/", StaticFiles(directory="static"), name="static")
